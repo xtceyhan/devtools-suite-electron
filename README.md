@@ -40,3 +40,9 @@ npm start
 npm run dist       # Windows (.exe / NSIS installer)
 npm run dist-mac   # macOS (.dmg)
 ```
+
+## Geliştirici
+
+**Tuğrul Ceyhan** ([@xtceyhan](https://github.com/xtceyhan))
+
+Bu projenin tüm hakları saklıdır. Kod izin alınmadan kopyalanamaz, dağıtılamaz veya kullanılamaz — bkz. [LICENSE](LICENSE).
