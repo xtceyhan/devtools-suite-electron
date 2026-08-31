@@ -877,7 +877,7 @@ const GEN = (() => {
     const cfg=getCfg();
     paramList=parsedWSDL.getInputParams(currentOp).map(p=>({...p,enabled:true,rangeMode:p.kind==='RANGE'?cfg.rangeMode:undefined}));
     renderTree(); setStatus(paramList.length+' parametre','ok');
-    if(paramList.length) doGenerate();
+    doGenerate(); // parametre yoksa da (boş body) otomatik üretim yapılmalı
   });
 
   // ── URL'den WSDL Getir & Otomatik Oluştur ──
@@ -919,7 +919,9 @@ const GEN = (() => {
   });
 
   function doGenerate(){
-    if(!currentOp||!paramList.length)return;
+    // paramList boş olabilir — bu, operasyonun hiç input parametresi olmadığı anlamına
+    // gelir (ör. <urn:Foo/> gibi boş body), üretimi engelleyen bir hata durumu değil.
+    if(!currentOp)return;
     const cfg=getCfg();
     const pm=paramList.map(p=>({...p,rangeMode:p.rangeMode||cfg.rangeMode}));
     const xsl=genXSL(pm,cfg);
@@ -1017,7 +1019,7 @@ const GEN = (() => {
     getFuncName: () => currentOp,
     setSoapVersion: (v) => {
       soapVersion = (v==='SOAP 1.2') ? 'SOAP 1.2' : 'SOAP 1.1';
-      if (currentOp && paramList.length) doGenerate();
+      if (currentOp) doGenerate();
     },
   };
 })();
