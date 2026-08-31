@@ -399,6 +399,8 @@ const GEN = (() => {
   let currentOp  = null;
   let paramList  = [];
   let activeTypeIdx = -1;
+  let soapVersion = 'SOAP 1.1';
+  const SOAP_NS = { 'SOAP 1.1': 'http://schemas.xmlsoap.org/soap/envelope/', 'SOAP 1.2': 'http://www.w3.org/2003/05/soap-envelope' };
 
   const $ = id => document.getElementById(id);
 
@@ -625,6 +627,7 @@ const GEN = (() => {
       funcName: $('cfg-funcName').value.trim() ||currentOp,
       urn:      $('cfg-urn').value.trim()      ||'urn:sap-com:document:sap:soap:functions:mc-style',
       soapPfx:  $('cfg-soapPfx').value.trim()  ||'soapenv',
+      soapNs:   SOAP_NS[soapVersion] || SOAP_NS['SOAP 1.1'],
       indent:ind,
       rangeMode:$('cfg-rangeMode').value,
       sign:     $('cfg-sign').value,
@@ -634,13 +637,13 @@ const GEN = (() => {
   }
 
   function genXSL(params,cfg){
-    const{indent:I,soapPfx:sp,matchRoot:mr,funcName:fn,urn,sign,option,comments}=cfg;
+    const{indent:I,soapPfx:sp,soapNs:sns,matchRoot:mr,funcName:fn,urn,sign,option,comments}=cfg;
     const I2=I+I,I3=I2+I,I4=I3+I,I5=I4+I;
     const lines=[];
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
     lines.push(`<xsl:stylesheet version="1.0"`);
     lines.push(`${I}xmlns:xsl="http://www.w3.org/1999/XSL/Transform"`);
-    lines.push(`${I}xmlns:${sp}="http://schemas.xmlsoap.org/soap/envelope/"`);
+    lines.push(`${I}xmlns:${sp}="${sns}"`);
     lines.push(`${I}xmlns:urn="${urn}"`);
     lines.push(`${I}exclude-result-prefixes="xsl">`);
     lines.push('');
@@ -821,6 +824,7 @@ const GEN = (() => {
   function doParse(){
     const text=$('g-wsdl').value.trim();
     if(!text){toast('WSDL girişi boş','var(--red)');return;}
+    soapVersion='SOAP 1.1'; // yeni bir parse'ta önceki seçili SOAP sürümü sıfırlanır — MIP sekmesi endpoint seçimiyle tekrar ayarlanır
     const fmt=detectFormat(text);
 
     if(fmt==='soap'){
@@ -857,8 +861,15 @@ const GEN = (() => {
 
   $('g-opSel').addEventListener('change',function(){
     currentOp=this.value; if(!currentOp)return;
-    if(!$('cfg-matchRoot').value) $('cfg-matchRoot').value=currentOp;
-    if(!$('cfg-funcName').value)  $('cfg-funcName').value=currentOp;
+    // Operasyon değişince match root / func name her zaman yeni operasyona senkronlanmalı —
+    // önceki operasyondan kalan değer burada tutulursa üretilen XSL yanlış operasyon adını kullanır.
+    $('cfg-matchRoot').value=currentOp;
+    $('cfg-funcName').value=currentOp;
+    // Farkl\u0131 bir operasyona ge\u00e7ince \u00f6nceki operasyon i\u00e7in se\u00e7ilmi\u015f SOAP s\u00fcr\u00fcm\u00fc de
+    // s\u0131f\u0131rlanmal\u0131 \u2014 yoksa \u00f6rn. 002 i\u00e7in se\u00e7ilen SOAP 1.2, h\u00e2l\u00e2 SOAP 1.1 bekleyen
+    // 003'e s\u0131z\u0131p SAP taraf\u0131nda "VersionMismatch" fault'una yol a\u00e7ar. Do\u011fru s\u00fcr\u00fcm
+    // MIP sekmesindeki endpoint listesinden bu operasyon i\u00e7in tekrar se\u00e7ilmeli.
+    soapVersion='SOAP 1.1';
     $('g-midTitle').textContent='PARAMETRELER \u2014 '+currentOp;
     $('g-stOp').textContent=currentOp;
     $('g-generate').disabled=false;
@@ -1004,6 +1015,10 @@ const GEN = (() => {
     doParse,
     getXslText:  () => $('g-xslOut').value,
     getFuncName: () => currentOp,
+    setSoapVersion: (v) => {
+      soapVersion = (v==='SOAP 1.2') ? 'SOAP 1.2' : 'SOAP 1.1';
+      if (currentOp && paramList.length) doGenerate();
+    },
   };
 })();
 
@@ -1356,6 +1371,21 @@ const MIP = (() => {
     return m ? m[1] : '';
   }
 
+  // XSL içeriğinde kullanılan SOAP envelope namespace'ine bakarak doğru HTTP
+  // Content-Type'ı belirler. Bu ayrım kritik: SAP (ve genel olarak SOAP sunucuları)
+  // isteğin SOAP 1.1 mi 1.2 mi olduğunu genelde XML gövdesindeki namespace'ten değil,
+  // HTTP Content-Type header'ından belirler. XSL SOAP 1.2 namespace'i
+  // (w3.org/2003/05/soap-envelope) kullanıyorken Content-Type hep "text/xml" (SOAP 1.1'in
+  // içerik tipi) olarak gönderilirse, sunucu isteği SOAP 1.1 işlemcisiyle açar ve gövdenin
+  // beklediği namespace'le uyuşmadığını görüp "VersionMismatch" / "Wrong SOAP Version"
+  // fault'u döner — istek manuel bir SOAP 1.2 istemcisiyle (doğru Content-Type'la)
+  // gönderildiğinde sorunsuz çalışırken, bu paketten gönderildiğinde patlamasının sebebi budur.
+  function detectSoapContentType(xslText) {
+    return /2003\/05\/soap-envelope/.test(xslText)
+      ? 'application/soap+xml; charset=utf-8'
+      : 'text/xml; charset=utf-8';
+  }
+
   // Timestamp: YYYYMMDD-HHmmssSSS formatı (MIP'in kendi formatı)
   function makeTimestamp() {
     const d = new Date();
@@ -1473,7 +1503,7 @@ const MIP = (() => {
               soapTimeout: '700000',
               ClientCertificateResourceName: '',
               proxyEnable: false,
-              contentType: 'text/xml; charset=utf-8',
+              contentType: cfg.soapContentType || 'text/xml; charset=utf-8',
               retryDelay: 0, maxRetries: 0,
               soapAllowedHeaders: false, soapAllowedHeaderList: []
             }
@@ -1670,6 +1700,7 @@ const MIP = (() => {
       xslName:     $('mip-xslName').value.trim(),
       xslContent,
       xmlRootName: parseXslRootName(xslContent) || $('mip-flowId').value.trim(),
+      soapContentType: detectSoapContentType(xslContent),
     };
 
     setStatus('Oluşturuluyor...', '');
@@ -1706,27 +1737,49 @@ const WSDL_HELPER = (() => {
     $('wsdl-toggle').classList.toggle('open', open);
   };
 
-  // WSDL XML'den endpoint'leri parse et
+  // WSDL XML'den endpoint'leri parse et.
+  //
+  // ÖNEMLİ: eski implementasyon `<...address location="...">` tag'lerini generic regex'le
+  // yakalayıp versiyonu "bu tag'in metni belgede ilk nerede geçiyor" (xmlText.indexOf(m[0]))
+  // civarında "soap12" kelimesi var mı diye bakarak tahmin ediyordu, sonra tüm sonuçları
+  // SADECE URL'e göre tekilleştiriyordu. Aynı fiziksel URL hem SOAP 1.1 hem SOAP 1.2 port'u
+  // için kullanıldığında (SAP'de çok yaygın), bu iki farklı port TEK bir kayda çöküyor ve
+  // hangisi hayatta kalırsa o, diğerinin versiyon etiketiyle üzerine yazılabiliyordu — yani
+  // "SOAP 1.2" diye gösterilen link aslında SOAP 1.1 port'unun kaydı olabiliyordu.
+  //
+  // Doğru yöntem WSDL spesine göre: bir port'un SOAP sürümü, o port içindeki adres
+  // elementinin NAMESPACE URI'sinden gelir (soap:address → SOAP 1.1 namespace'i,
+  // soap12:address → SOAP 1.2 namespace'i) — prefix ismine değil (WSDL farklı bir prefix
+  // kullanabilir), ve metin yakınlığı tahminine hiç gerek yok.
   function parseEndpoints(xmlText) {
+    const byLocal = (root, ln) => Array.from(root.getElementsByTagName('*')).filter(e => e.localName === ln);
+    const SOAP11_NS = 'http://schemas.xmlsoap.org/wsdl/soap/';
+    const SOAP12_NS = 'http://schemas.xmlsoap.org/wsdl/soap12/';
+
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      if (doc.querySelector('parsererror')) throw new Error('parse error');
+
+      const results = [];
+      byLocal(doc, 'port').forEach(p => {
+        const addr = byLocal(p, 'address').find(e => e.namespaceURI === SOAP11_NS || e.namespaceURI === SOAP12_NS);
+        if (!addr) return;
+        const url = addr.getAttribute('location');
+        if (!url || !url.startsWith('http')) return;
+        results.push({ version: addr.namespaceURI === SOAP12_NS ? 'SOAP 1.2' : 'SOAP 1.1', url });
+      });
+      // Aynı (versiyon, url) çiftini tekilleştir — farklı versiyondaki aynı URL'ler AYRI kalır
+      if (results.length) return results.filter((r, i, a) => a.findIndex(x => x.version === r.version && x.url === r.url) === i);
+    } catch (e) { /* DOM ayrıştırma başarısız oldu — geçersiz/gevşek XML için regex fallback'e düş */ }
+
+    // Fallback: sadece DOM ayrıştırma başarısız olursa devreye girer.
     const results = [];
-    const s11 = [...xmlText.matchAll(/<(?:\w+:)?address[^>]+location=["']([^"']+)["'][^>]*>/g)];
-    s11.forEach(m => {
-      const url = m[1];
+    [...xmlText.matchAll(/<([\w-]+):address[^>]+location=["']([^"']+)["'][^>]*>/g)].forEach(m => {
+      const url = m[2];
       if (!url.startsWith('http')) return;
-      // soap12 port'u içeren binding adına bak
-      const isSOAP12 = xmlText.indexOf(m[0]) > 0 &&
-        xmlText.substring(Math.max(0, xmlText.indexOf(m[0]) - 300), xmlText.indexOf(m[0])).match(/soap12|Soap12|SOAP12/);
-      results.push({ version: isSOAP12 ? 'SOAP 1.2' : 'SOAP 1.1', url });
+      results.push({ version: /soap12/i.test(m[1]) ? 'SOAP 1.2' : 'SOAP 1.1', url });
     });
-    // Daha kesin SOAP 1.2 tespiti: soap12:address
-    const s12 = [...xmlText.matchAll(/<soap12:address[^>]+location=["']([^"']+)["']/g)];
-    s12.forEach(m => {
-      const existing = results.find(r => r.url === m[1]);
-      if (existing) existing.version = 'SOAP 1.2';
-      else results.push({ version: 'SOAP 1.2', url: m[1] });
-    });
-    // Tekrarları temizle
-    return results.filter((r, i, a) => a.findIndex(x => x.url === r.url) === i);
+    return results.filter((r, i, a) => a.findIndex(x => x.version === r.version && x.url === r.url) === i);
   }
 
   // Sonuçları render et
@@ -1752,7 +1805,10 @@ const WSDL_HELPER = (() => {
       `;
       div.onclick = () => {
         $('mip-soapUrl').value = ep.url;
-        toast('✓ Endpoint kopyalandı → SOAP URL alanına eklendi');
+        // Seçilen endpoint'in SOAP sürümünü XSL Generator'a da bildir — üretilen
+        // envelope namespace'i (soap 1.1 vs 1.2) seçilen endpoint'le uyumlu olsun
+        window.GEN?.setSoapVersion(ep.version);
+        toast(`✓ Endpoint kopyalandı (${ep.version}) → SOAP URL alanına eklendi`);
         // Helper'ı kapat
         $('wsdl-body').classList.remove('open');
         $('wsdl-toggle').classList.remove('open');
