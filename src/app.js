@@ -448,14 +448,16 @@ const GEN = (() => {
         }
         const ict=this._byLocal(item,'complexType')[0];
         if(ict){
-          const ff=this._getFields(ict);
+          // item satırının kendi alanları da bir TABLE/STRUCT olabilir (örn. Zjoin) —
+          // bu yüzden düz _getFields değil, recursive _paramsFromCT kullanılır.
+          const ff=this._paramsFromCT(ict);
           const names=ff.map(f=>f.name);
           if(['SIGN','OPTION','LOW','HIGH'].every(n=>names.includes(n))) return{kind:'RANGE',fields:[]};
           return{kind:'TABLE',fields:ff};
         }
         return{kind:'TABLE',fields:[]};
       }
-      const ff=this._getFields(ct);
+      const ff=this._paramsFromCT(ct);
       if(!ff.length) return{kind:'SIMPLE',fields:[]};
       return{kind:'STRUCT',fields:ff};
     }
@@ -475,14 +477,6 @@ const GEN = (() => {
           else this.typeReg[n]={kind:'TABLE',fields:r.fields||[]};
         }
       });
-    }
-    _getFields(ct){
-      const ff=[];
-      this._byLocal(ct,'element').forEach(el=>{
-        const n=el.getAttribute('name'); if(!n||n==='item')return;
-        ff.push({name:n,type:this._strip(el.getAttribute('type')||'xsd:string')});
-      });
-      return ff;
     }
     _extractOps(){
       this._reanalyze();
@@ -536,8 +530,11 @@ const GEN = (() => {
       return ct?this._paramsFromCT(ct):[];
     }
     _paramsFromCT(ct){
-      const seq=this._byLocal(ct,'sequence')[0]||this._byLocal(ct,'all')[0]||ct;
-      const els=this._byLocal(seq,'element').filter(el=>['sequence','all','choice'].includes(el.parentElement?.localName));
+      const seq=this._byLocal(ct,'sequence')[0]||this._byLocal(ct,'all')[0]||this._byLocal(ct,'choice')[0]||ct;
+      // Sadece DİREKT çocuklar (_kids) — _byLocal tüm alt seviyeleri topladığı için
+      // iç içe (nested) bir tablo/struct alanı (örn. Zjoin) varsa onun kendi alanları
+      // yanlışlıkla üst seviyeye düz (flatten) karışıyordu.
+      const els=this._kids(seq,'element');
       return els.map(el=>{
         const name=el.getAttribute('name'); if(!name)return null;
         const tr=this._strip(el.getAttribute('type')||'');
@@ -573,6 +570,25 @@ const GEN = (() => {
       if(/^IS[A-Z]|^ES[A-Z]/.test(n))return'STRUCT';
       return'SIMPLE';
     }
+    // Bir elemanın tipini (SIMPLE/RANGE/TABLE/STRUCT) ve alanlarını recursive tespit eder.
+    // Bir TABLE'ın alanı (örn. ItTable/item/Zjoin) kendisi de bir TABLE/STRUCT olabilir —
+    // bu yüzden düz (flat) değil, her seviyede kendini çağırır.
+    function detectField(node){
+      const name=node.localName;
+      const ch=Array.from(node.children).filter(c=>c.nodeType===1);
+      if(!ch.length) return{name,kind:guess(name),fields:[]};
+      if(ch[0].localName==='item'){
+        const itemChildren=Array.from(ch[0].children).filter(c=>c.nodeType===1);
+        const iNames=itemChildren.map(c=>c.localName);
+        const isRange=['SIGN','OPTION','LOW','HIGH'].every(n=>iNames.includes(n));
+        if(isRange) return{name,kind:'RANGE',fields:[]};
+        return{name,kind:'TABLE',fields:itemChildren.map(detectField)};
+      }
+      const fields=ch.map(detectField);
+      const isRange=['SIGN','OPTION','LOW','HIGH'].every(n=>fields.map(f=>f.name).includes(n));
+      if(isRange) return{name,kind:'RANGE',fields:[]};
+      return{name,kind:'STRUCT',fields};
+    }
     const body=byL(doc,'Body')[0]; if(!body)throw new Error('SOAP Body bulunamadı');
     const func=Array.from(body.children).find(e=>e.nodeType===1); if(!func)throw new Error('Fonksiyon bulunamadı');
     const funcName=func.localName;
@@ -587,22 +603,7 @@ const GEN = (() => {
     const params=[];
     Array.from(func.childNodes).forEach(node=>{
       if(node.nodeType!==1)return;
-      const name=node.localName;
-      const ch=Array.from(node.children).filter(c=>c.nodeType===1);
-      if(ch.length){
-        const fn=ch[0]?.localName;
-        if(fn==='item'){
-          const iNames=Array.from(ch[0].children).map(c=>c.localName);
-          const isRange=['SIGN','OPTION','LOW','HIGH'].every(n=>iNames.includes(n));
-          params.push({name,kind:isRange?'RANGE':'TABLE',fields:isRange?[]:iNames.map(n=>({name:n,type:'xsd:string'}))});
-        } else {
-          const fields=ch.map(c=>({name:c.localName,type:'xsd:string'}));
-          const isRange=['SIGN','OPTION','LOW','HIGH'].every(n=>fields.map(f=>f.name).includes(n));
-          params.push({name,kind:isRange?'RANGE':'STRUCT',fields:isRange?[]:fields});
-        }
-      } else {
-        params.push({name,kind:guess(name),fields:[]});
-      }
+      params.push(detectField(node));
     });
     return{funcName,params,urn};
   }
@@ -707,7 +708,8 @@ const GEN = (() => {
         ls.push(`${base}<${name}>`);
         ls.push(`${base}${I}<xsl:for-each select="${name}/item">`);
         ls.push(`${base}${I}${I}<item>`);
-        if(fields?.length) fields.forEach(f=>ls.push(`${base}${I}${I}${I}<${f.name}><xsl:value-of select="${f.name}"/></${f.name}>`));
+        // Context artık "${name}/item" — satır alanları buradan itibaren relatif (ctxPath='')
+        if(fields?.length) fields.forEach(f=>ls.push(...genField(f,base+I+I+I,I,{sign,option,comments},'')));
         else ls.push(`${base}${I}${I}${I}<!-- Alanlar bulunamadı -->`);
         ls.push(`${base}${I}${I}</item>`);
         ls.push(`${base}${I}</xsl:for-each>`);
@@ -716,12 +718,57 @@ const GEN = (() => {
       case'STRUCT':
         if(comments)ls.push(`${base}<!-- STRUCT: ${name} -->`);
         ls.push(`${base}<${name}>`);
-        if(fields?.length) fields.forEach(f=>ls.push(`${base}${I}<${f.name}><xsl:value-of select="${name}/${f.name}"/></${f.name}>`));
+        // STRUCT context değiştirmez (for-each yok) — alanlar "${name}/alan" yoluyla erişilir
+        if(fields?.length) fields.forEach(f=>ls.push(...genField(f,base+I,I,{sign,option,comments},name)));
         else ls.push(`${base}${I}<!-- Alanlar bulunamadı -->`);
         ls.push(`${base}</${name}>`);
         break;
       default:
         ls.push(`${base}<${name}><!-- ${kind} --></${name}>`);
+    }
+    return ls;
+  }
+
+  // TABLE/STRUCT içindeki bir alanı üretir — alan kendisi de iç içe bir TABLE/STRUCT/RANGE
+  // olabilir (örn. ItTable/item/Zjoin gibi bir tablo içindeki tablo), bu yüzden recursive.
+  // ctxPath: bu alana XSLT'nin mevcut context node'undan erişmek için gereken relatif yol
+  // ('' ise alan doğrudan mevcut context'in altında — bir xsl:for-each'in hemen içindeyiz demektir).
+  function genField(f,base,I,{sign,option,comments},ctxPath){
+    const path=ctxPath?`${ctxPath}/${f.name}`:f.name;
+    const ls=[];
+    switch(f.kind){
+      case'TABLE':
+        if(comments)ls.push(`${base}<!-- TABLE: ${f.name} -->`);
+        ls.push(`${base}<${f.name}>`);
+        ls.push(`${base}${I}<xsl:for-each select="${path}/item">`);
+        ls.push(`${base}${I}${I}<item>`);
+        if(f.fields?.length) f.fields.forEach(sf=>ls.push(...genField(sf,base+I+I+I,I,{sign,option,comments},'')));
+        else ls.push(`${base}${I}${I}${I}<!-- Alanlar bulunamadı -->`);
+        ls.push(`${base}${I}${I}</item>`);
+        ls.push(`${base}${I}</xsl:for-each>`);
+        ls.push(`${base}</${f.name}>`);
+        break;
+      case'RANGE':
+        if(comments)ls.push(`${base}<!-- RANGE: ${f.name} -->`);
+        ls.push(`${base}<${f.name}>`);
+        ls.push(`${base}${I}<item>`);
+        ls.push(`${base}${I}${I}<SIGN>${sign}</SIGN>`);
+        ls.push(`${base}${I}${I}<OPTION>${option}</OPTION>`);
+        ls.push(`${base}${I}${I}<LOW><xsl:value-of select="${path}"/></LOW>`);
+        ls.push(`${base}${I}${I}<HIGH/>`);
+        ls.push(`${base}${I}</item>`);
+        ls.push(`${base}</${f.name}>`);
+        break;
+      case'STRUCT':
+        if(comments)ls.push(`${base}<!-- STRUCT: ${f.name} -->`);
+        ls.push(`${base}<${f.name}>`);
+        if(f.fields?.length) f.fields.forEach(sf=>ls.push(...genField(sf,base+I,I,{sign,option,comments},path)));
+        else ls.push(`${base}${I}<!-- Alanlar bulunamadı -->`);
+        ls.push(`${base}</${f.name}>`);
+        break;
+      case'SIMPLE':
+      default:
+        ls.push(`${base}<${f.name}><xsl:value-of select="${path}"/></${f.name}>`);
     }
     return ls;
   }
@@ -760,7 +807,10 @@ const GEN = (() => {
         } else if(hasF){
           p.fields.forEach(f=>{
             const fi=document.createElement('div'); fi.className='fi';
-            fi.innerHTML=`<div class="fi-dot"></div><span class="fi-name">${f.name}</span><span class="fi-type">${f.type||''}</span>`;
+            // Alan kendisi de iç içe bir TABLE/STRUCT/RANGE olabilir (örn. Zjoin) — bu
+            // durumda tipini xsd:string yerine kendi kind'ini göster.
+            const typeLabel=(f.kind&&f.kind!=='SIMPLE')?f.kind:(f.type||'');
+            fi.innerHTML=`<div class="fi-dot"></div><span class="fi-name">${f.name}</span><span class="fi-type">${typeLabel}</span>`;
             flds.appendChild(fi);
           });
         }
@@ -1101,22 +1151,21 @@ const REQ = (() => {
     // RANGE: içinde <item><SIGN>...<OPTION>...<LOW>...<HIGH>
     const items = Array.from(el.getElementsByTagName('item'));
     if (items.length) {
+      // Not: items[0] her zaman en dıştaki (belge sırasına göre ilk) <item> — nested bir
+      // tablonun (örn. Zjoin) kendi <item>'i document order'da daha sonra geldiği için karışmaz.
       const firstItem = items[0];
-      const childNames = Array.from(firstItem.children).map(c => c.localName);
+      const itemChildren = Array.from(firstItem.children).filter(c => !c.tagName.includes(':'));
+      const childNames = itemChildren.map(c => c.localName);
       const isRange = ['SIGN','OPTION','LOW','HIGH'].every(n => childNames.includes(n));
       if (isRange) return { name, kind: 'RANGE', fields: [] };
-      // for-each → TABLE
-      const forEaches = byL(el, 'for-each');
-      if (forEaches.length) {
-        const itemChildren = Array.from(items[0].children).map(c => c.localName);
-        return { name, kind: 'TABLE', fields: itemChildren.map(f => ({ name: f })) };
-      }
-      return { name, kind: 'TABLE', fields: Array.from(firstItem.children).map(c => ({ name: c.localName })) };
+      // Satır alanlarının HER BİRİ kendisi de bir TABLE/STRUCT olabilir (örn. Zjoin) —
+      // bu yüzden düz isim listesi değil, recursive tespit yapılır.
+      return { name, kind: 'TABLE', fields: itemChildren.map(c => detectParamType(c, byL)) };
     }
-    // STRUCT: doğrudan child elementler var ve value-of yok (veya sadece nested elementler)
+    // STRUCT: doğrudan child elementler var (value-of yok) — bu alanlar da recursive'dir
     const directChildren = Array.from(el.children).filter(c => !c.tagName.includes(':'));
     if (directChildren.length) {
-      return { name, kind: 'STRUCT', fields: directChildren.map(c => ({ name: c.localName })) };
+      return { name, kind: 'STRUCT', fields: directChildren.map(c => detectParamType(c, byL)) };
     }
     // SIMPLE: xsl:value-of var
     return { name, kind: 'SIMPLE', fields: [] };
@@ -1125,28 +1174,29 @@ const REQ = (() => {
   // ── JSON ÜRETİCİ ──
   function toJSON(parsed) {
     const obj = {};
-    parsed.params.forEach(p => {
-      switch (p.kind) {
-        case 'RANGE':
-          obj[p.name] = { item: { Sign: 'I', Option: 'EQ', Low: '', High: '' } };
-          break;
-        case 'TABLE':
-          const row = {};
-          (p.fields || []).forEach(f => { row[f.name] = ''; });
-          obj[p.name] = { item: [row] };
-          break;
-        case 'STRUCT':
-          const st = {};
-          (p.fields || []).forEach(f => { st[f.name] = ''; });
-          obj[p.name] = st;
-          break;
-        case 'SIMPLE':
-        default:
-          obj[p.name] = '';
-          break;
-      }
-    });
+    parsed.params.forEach(p => { obj[p.name] = fieldToJSON(p); });
     return JSON.stringify(obj, null, 4);
+  }
+  // Bir alanın JSON karşılığını üretir — alan kendisi de iç içe bir TABLE/STRUCT olabilir
+  // (örn. ItTable/item/Zjoin), bu yüzden recursive.
+  function fieldToJSON(p) {
+    switch (p.kind) {
+      case 'RANGE':
+        return { item: { Sign: 'I', Option: 'EQ', Low: '', High: '' } };
+      case 'TABLE': {
+        const row = {};
+        (p.fields || []).forEach(f => { row[f.name] = fieldToJSON(f); });
+        return { item: [row] };
+      }
+      case 'STRUCT': {
+        const st = {};
+        (p.fields || []).forEach(f => { st[f.name] = fieldToJSON(f); });
+        return st;
+      }
+      case 'SIMPLE':
+      default:
+        return '';
+    }
   }
 
   // ── SOAP XML ÜRETİCİ ──
@@ -1164,41 +1214,47 @@ const REQ = (() => {
     lines.push(`    <${sp}:Body>`);
     lines.push(`        <${up}:${fn}>`);
 
-    parsed.params.forEach(p => {
-      switch (p.kind) {
-        case 'RANGE':
-          lines.push(`${I}${I}<${p.name}>`);
-          lines.push(`${I}${I}${I}<item>`);
-          lines.push(`${I}${I}${I}${I}<SIGN>I</SIGN>`);
-          lines.push(`${I}${I}${I}${I}<OPTION>EQ</OPTION>`);
-          lines.push(`${I}${I}${I}${I}<LOW></LOW>`);
-          lines.push(`${I}${I}${I}${I}<HIGH></HIGH>`);
-          lines.push(`${I}${I}${I}</item>`);
-          lines.push(`${I}${I}</${p.name}>`);
-          break;
-        case 'TABLE':
-          lines.push(`${I}${I}<${p.name}>`);
-          lines.push(`${I}${I}${I}<item>`);
-          (p.fields || []).forEach(f => lines.push(`${I}${I}${I}${I}<${f.name}></${f.name}>`));
-          lines.push(`${I}${I}${I}</item>`);
-          lines.push(`${I}${I}</${p.name}>`);
-          break;
-        case 'STRUCT':
-          lines.push(`${I}${I}<${p.name}>`);
-          (p.fields || []).forEach(f => lines.push(`${I}${I}${I}<${f.name}></${f.name}>`));
-          lines.push(`${I}${I}</${p.name}>`);
-          break;
-        case 'SIMPLE':
-        default:
-          lines.push(`${I}${I}<${p.name}></${p.name}>`);
-          break;
-      }
-    });
+    parsed.params.forEach(p => { lines.push(...fieldToSOAP(p, I + I)); });
 
     lines.push(`        </${up}:${fn}>`);
     lines.push(`    </${sp}:Body>`);
     lines.push(`</${sp}:Envelope>`);
     return lines.join('\n');
+  }
+  // Bir alanın SOAP XML karşılığını üretir — alan kendisi de iç içe bir TABLE/STRUCT olabilir
+  // (örn. ItTable/item/Zjoin), bu yüzden recursive. `base` o alanın açılış girintisi.
+  function fieldToSOAP(f, base) {
+    const I = '    ';
+    const lines = [];
+    switch (f.kind) {
+      case 'RANGE':
+        lines.push(`${base}<${f.name}>`);
+        lines.push(`${base}${I}<item>`);
+        lines.push(`${base}${I}${I}<SIGN>I</SIGN>`);
+        lines.push(`${base}${I}${I}<OPTION>EQ</OPTION>`);
+        lines.push(`${base}${I}${I}<LOW></LOW>`);
+        lines.push(`${base}${I}${I}<HIGH></HIGH>`);
+        lines.push(`${base}${I}</item>`);
+        lines.push(`${base}</${f.name}>`);
+        break;
+      case 'TABLE':
+        lines.push(`${base}<${f.name}>`);
+        lines.push(`${base}${I}<item>`);
+        (f.fields || []).forEach(sf => lines.push(...fieldToSOAP(sf, base + I + I)));
+        lines.push(`${base}${I}</item>`);
+        lines.push(`${base}</${f.name}>`);
+        break;
+      case 'STRUCT':
+        lines.push(`${base}<${f.name}>`);
+        (f.fields || []).forEach(sf => lines.push(...fieldToSOAP(sf, base + I)));
+        lines.push(`${base}</${f.name}>`);
+        break;
+      case 'SIMPLE':
+      default:
+        lines.push(`${base}<${f.name}></${f.name}>`);
+        break;
+    }
+    return lines;
   }
 
   // ── CONVERT ──
