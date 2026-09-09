@@ -1,0 +1,66 @@
+name: Release
+
+# package.json'daki "version" değiştirilip main'e pushlandığında tetiklenir.
+# Sürüm zaten yayınlanmışsa (aynı tag mevcutsa) hiçbir şey yapmaz — bu yüzden
+# normal (version değiştirmeyen) commit'ler build/release başlatmaz.
+#
+# Yeni sürüm yayınlama akışı:
+#   1) package.json → "version" alanını artır (örn. 1.1.0 → 1.2.0)
+#   2) commit + push (main)
+#   3) Bu workflow otomatik olarak macOS (.dmg) ve Windows (.exe) paketlerini
+#      build edip GitHub Releases'e "v1.2.0" olarak yayınlar
+#   4) Uygulama açıldığında electron-updater bu release'i görür, kullanıcıya
+#      banner ile "Yeni sürüm mevcut" gösterir → tek tuşla indir & kur
+
+on:
+  push:
+    branches: [main]
+    paths: ['package.json']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            script: release-mac
+          - os: windows-latest
+            script: release
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: ver
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Bu sürüm zaten yayınlanmış mı kontrol et
+        id: check
+        shell: bash
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/v${{ steps.ver.outputs.version }}$"; then
+            echo "Zaten yayınlanmış (v${{ steps.ver.outputs.version }}) — atlanıyor."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'false'
+        with:
+          node-version: 20
+
+      - name: Bağımlılıkları kur
+        if: steps.check.outputs.exists == 'false'
+        run: npm ci
+
+      - name: Build & GitHub Release'e yayınla
+        if: steps.check.outputs.exists == 'false'
+        run: npm run ${{ matrix.script }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

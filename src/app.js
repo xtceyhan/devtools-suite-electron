@@ -8,6 +8,66 @@ document.getElementById('bMax').onclick   = () => window.api?.maximize();
 document.getElementById('bClose').onclick = () => window.api?.close();
 
 // ─────────────────────────────────────────────────────
+// AUTO-UPDATE BANNER
+// main.js açılışta otomatik kontrol eder (GitHub Releases'teki en son sürüme
+// göre); burada sadece gelen olayları banner'a yansıtıyoruz. window.api yoksa
+// (örn. tarayıcıda geliştirme sırasında) sessizce hiçbir şey yapmaz.
+// ─────────────────────────────────────────────────────
+(() => {
+  const banner = document.getElementById('updateBanner');
+  const text   = document.getElementById('ubText');
+  const action = document.getElementById('ubAction');
+  const close  = document.getElementById('ubClose');
+  const prog   = document.getElementById('ubProgress');
+  const progFill = document.getElementById('ubProgressFill');
+  if (!banner || !window.api?.onUpdateAvailable) return;
+
+  let mode = 'idle'; // idle → available → downloading → downloaded
+
+  function show() { banner.hidden = false; }
+  function hide() { banner.hidden = true; }
+
+  action.onclick = async () => {
+    if (mode === 'available') {
+      mode = 'downloading';
+      action.disabled = true;
+      action.textContent = 'İndiriliyor…';
+      prog.hidden = false;
+      try { await window.api.updateDownload(); }
+      catch (e) { text.textContent = 'İndirme başlatılamadı: ' + (e?.message || e); action.disabled = false; }
+    } else if (mode === 'downloaded') {
+      window.api.updateInstall();
+    }
+  };
+  close.onclick = () => hide();
+
+  window.api.onUpdateAvailable(({ version }) => {
+    mode = 'available';
+    text.textContent = `Yeni sürüm mevcut: v${version}`;
+    action.textContent = 'İndir';
+    action.disabled = false;
+    prog.hidden = true;
+    show();
+  });
+  window.api.onUpdateProgress(({ percent }) => {
+    progFill.style.width = percent + '%';
+    action.textContent = `İndiriliyor… %${percent}`;
+  });
+  window.api.onUpdateDownloaded(() => {
+    mode = 'downloaded';
+    prog.hidden = true;
+    text.textContent = 'Güncelleme indirildi';
+    action.textContent = 'Yeniden Başlat & Yükle';
+    action.disabled = false;
+    show();
+  });
+  window.api.onUpdateError(({ message }) => {
+    // Sessiz geç — güncelleme kontrolü arka plan işi, kullanıcıyı rahatsız etmesin.
+    console.warn('Güncelleme hatası:', message);
+  });
+})();
+
+// ─────────────────────────────────────────────────────
 // TAB SWITCHING
 // ─────────────────────────────────────────────────────
 document.querySelectorAll('.nav-tab').forEach(tab => {

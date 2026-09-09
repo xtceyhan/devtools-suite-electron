@@ -41,6 +41,30 @@ npm run dist       # Windows (.exe / NSIS installer)
 npm run dist-mac   # macOS (.dmg)
 ```
 
+## Otomatik güncelleme
+
+Uygulama açılışta GitHub Releases'teki en son sürümü kontrol eder; yeni bir sürüm varsa
+üstte bir banner çıkar ("Yeni sürüm mevcut: vX.Y.Z" → İndir → Yeniden Başlat & Yükle).
+Bunun çalışması için **GitHub Release**'in var olması gerekir — sadece `git push` yeterli
+değildir (commit push ≠ release).
+
+**Yeni sürüm yayınlama akışı** (`.github/workflows/release.yml` otomatikleştirir):
+
+1. `package.json` içindeki `"version"` alanını artır (örn. `1.2.0` → `1.3.0`)
+2. Commit + `main`'e push
+3. GitHub Actions otomatik olarak macOS (`.dmg`) ve Windows (`.exe`) paketlerini build
+   edip `vX.Y.Z` etiketiyle GitHub Releases'e yayınlar
+4. Uygulamayı açan herkes bir sonraki açılışta güncelleme banner'ını görür
+
+Version alanı değişmeyen commit'ler workflow'u tetiklemez (gereksiz build/release yapılmaz).
+
+Elle/lokal yayınlamak istersen (`GH_TOKEN` env değişkeni gerekir — repo yazma izinli bir
+GitHub token):
+```bash
+GH_TOKEN=ghp_xxx npm run release-mac   # macOS
+GH_TOKEN=ghp_xxx npm run release       # Windows
+```
+
 ## Geliştirici
 
 **Tuğrul Ceyhan** ([@xtceyhan](https://github.com/xtceyhan))

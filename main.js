@@ -3,8 +3,10 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs   = require('fs');
 
+let mainWindow = null;
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280, height: 800, minWidth: 900, minHeight: 600,
     frame: false, transparent: true, backgroundColor: '#00000000',
     icon: path.join(__dirname, 'build', 'icon.png'),
@@ -14,7 +16,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     }
   });
-  win.loadFile(path.join(__dirname, 'src', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
 
 ipcMain.handle('win-min',   e => BrowserWindow.fromWebContents(e.sender).minimize());
@@ -198,9 +201,33 @@ ipcMain.handle('mip-zip', async (e, { flowsJson, resourcesJson, timestamp, flowI
   }
 });
 
+// ── OTOMATİK GÜNCELLEME ──
+// İndirme otomatik başlamaz: kullanıcı uygulama içindeki banner'dan "İndir"e
+// basınca başlar, indirme bitince de "Yeniden başlat ve yükle"ye basınca kurulur.
+// electron-builder'daki publish:{provider:"github", owner, repo} ayarını kullanır —
+// yani "yeni sürüm" GitHub Releases'teki en son sürümdür, sadece commit push değil.
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+
+function toRenderer(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+}
+
+autoUpdater.on('update-available',     info => toRenderer('update-available', { version: info.version }));
+autoUpdater.on('update-not-available', ()   => toRenderer('update-not-available'));
+autoUpdater.on('download-progress',    p    => toRenderer('update-progress', { percent: Math.round(p.percent) }));
+autoUpdater.on('update-downloaded',    ()   => toRenderer('update-downloaded'));
+autoUpdater.on('error',                err  => toRenderer('update-error', { message: err?.message || String(err) }));
+
+ipcMain.handle('update-check',    () => { if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {}); });
+ipcMain.handle('update-download', () => autoUpdater.downloadUpdate());
+ipcMain.handle('update-install',  () => autoUpdater.quitAndInstall());
+
 app.whenReady().then(() => {
   createWindow();
-  if (app.isPackaged) autoUpdater.checkForUpdatesAndNotify();
+  // Uygulama açılışında otomatik kontrol — sadece paketlenmiş (kurulu) sürümde,
+  // "npm start" ile geliştirme modunda çalışmaz.
+  if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {});
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

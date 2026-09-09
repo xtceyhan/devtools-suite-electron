@@ -68,6 +68,29 @@ body{
 .tl-logo .tl-icon i{font-size:14px}
 .tl-logo b{color:var(--t1);font-weight:500}
 
+/* ── UPDATE BANNER ── */
+.update-banner{
+  display:flex;align-items:center;gap:10px;height:38px;padding:0 14px;flex-shrink:0;
+  background:linear-gradient(90deg, rgba(165,148,249,.16), rgba(93,202,165,.10));
+  border-bottom:0.5px solid var(--glass-border-strong);
+  font-size:12.5px;color:var(--t1);-webkit-app-region:no-drag;
+}
+.update-banner[hidden]{display:none}
+.update-banner>i{color:var(--accent);font-size:15px}
+.ub-progress{width:120px;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.ub-progress-fill{height:100%;width:0%;background:linear-gradient(90deg, var(--accent), var(--teal));transition:width .2s ease}
+.ub-btn{
+  padding:5px 14px;font-size:12px;font-weight:500;border-radius:7px;border:none;cursor:pointer;
+  background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);color:#fff;
+  box-shadow:0 0 12px var(--accent-glow);font-family:inherit;white-space:nowrap;
+}
+.ub-btn:disabled{opacity:.6;cursor:default}
+.ub-close{
+  width:22px;height:22px;border:none;border-radius:6px;background:transparent;color:var(--t3);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.ub-close:hover{background:var(--glass-strong);color:var(--t1)}
+
 /* Nav tabs */
 .nav-tabs{
   display:flex;align-items:center;gap:3px;
