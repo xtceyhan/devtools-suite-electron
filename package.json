@@ -20,7 +20,7 @@
       "build/icon.png"
     ],
     "publish": [
-      { "provider": "github", "owner": "xtceyhan", "repo": "devtools-suite-electron" }
+      { "provider": "github", "owner": "xtceyhan", "repo": "devtools-suite-electron", "releaseType": "release" }
     ],
     "win": {
       "target": "nsis",
