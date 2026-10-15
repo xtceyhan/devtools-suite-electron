@@ -373,7 +373,7 @@ const FMT = (() => {
       t.classList.add('active');
       mode = t.dataset.mode;
       const dot=$('f-inDot'), lbl=$('f-inLabel');
-      const colorMap = { xml: 'var(--coral)', json: 'var(--amber)', auto: 'var(--accent)' };
+      const colorMap = { xml: 'var(--coral)', json: 'var(--amber)', auto: 'var(--accent-ink)' };
       const c = colorMap[mode] || colorMap.auto;
       dot.style.background = c;
       dot.style.color = c;
@@ -886,7 +886,7 @@ const GEN = (() => {
     const c={SIMPLE:0,RANGE:0,TABLE:0,STRUCT:0};
     paramList.forEach(p=>{if(c[p.kind]!==undefined)c[p.kind]++;});
     const parts=[];
-    if(c.SIMPLE)parts.push(`<span style="color:var(--accent)">${c.SIMPLE} Simple</span>`);
+    if(c.SIMPLE)parts.push(`<span style="color:var(--accent-ink)">${c.SIMPLE} Simple</span>`);
     if(c.RANGE) parts.push(`<span style="color:var(--coral)">${c.RANGE} Range</span>`);
     if(c.TABLE) parts.push(`<span style="color:var(--pink)">${c.TABLE} Table</span>`);
     if(c.STRUCT)parts.push(`<span style="color:var(--teal)">${c.STRUCT} Struct</span>`);
@@ -1082,6 +1082,8 @@ const GEN = (() => {
     $('g-outDot').style.color='var(--t3)';
     renderTree(); setStatus('Hazır');
   };
+
+  $('g-clear').onclick = () => $('g-clearWsdl').onclick();
 
   document.querySelectorAll('.tog').forEach(t=>{
     t.onclick=()=>{ const o=t.dataset.on==='true'; t.dataset.on=String(!o); t.classList.toggle('on',!o); };
@@ -1358,7 +1360,7 @@ const REQ = (() => {
     const c = { SIMPLE:0, RANGE:0, TABLE:0, STRUCT:0 };
     parsed.params.forEach(p => { if (c[p.kind] !== undefined) c[p.kind]++; });
     const parts = [];
-    if (c.SIMPLE) parts.push(`<span style="color:var(--accent)">${c.SIMPLE} Simple</span>`);
+    if (c.SIMPLE) parts.push(`<span style="color:var(--accent-ink)">${c.SIMPLE} Simple</span>`);
     if (c.RANGE)  parts.push(`<span style="color:var(--coral)">${c.RANGE} Range</span>`);
     if (c.TABLE)  parts.push(`<span style="color:var(--pink)">${c.TABLE} Table</span>`);
     if (c.STRUCT) parts.push(`<span style="color:var(--teal)">${c.STRUCT} Struct</span>`);

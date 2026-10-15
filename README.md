@@ -27,6 +27,24 @@ SAP entegrasyon geliştirmesini hızlandırmak için yazılmış, Electron taban
 - Geçersiz XML/JSON girilirse o taraf ham metin olarak karşılaştırılır ve kullanıcı uyarılır
 - Alt statusbar'da eklenen/silinen/değişmeyen satır sayıları gösterilir
 
+## Arayüz — Signal Bench
+
+v2 arayüzü “Signal Bench” tasarım sistemini kullanır: sıcak grafit nötrler, tek sinyal rengi (volt `#d4ff3a`), mono okuma etiketleri, sol kenar çubuğu ve `Ctrl K` komut paleti. Koyu ve açık tema birlikte gelir; varsayılan olarak sistem temasını izler.
+
+- `src/tokens.css` — renk, tipografi, boşluk, köşe, gölge token'ları (dark + light). Eski değişken adları (`--t1`, `--teal`…) burada yeni token'lara bağlanır.
+- `src/styles.css` — bileşen ve yerleşim katmanı.
+- `src/shell.js` — tema, kenar çubuğu, komut paleti ve global kısayollar (`app.js`'e dokunmaz).
+- Fontlar yerel: Geist (arayüz), Bricolage Grotesque (başlıklar), JetBrains Mono (editör).
+
+| Kısayol | Aksiyon |
+|---|---|
+| `Ctrl K` | Komut paleti (araç / komut ara; XML-JSON-WSDL-XSL yapıştırınca doğru aracı önerir) |
+| `Ctrl 1–5` | Formatter · Diff · XSL Generator · XSL → Request · MIP Paketi |
+| `Ctrl Enter` | Format / Karşılaştır / Dönüştür |
+| `Ctrl B` | Kenar çubuğunu daralt |
+| `Ctrl Shift L` | Tema: Sistem → Koyu → Açık |
+| `Esc` | Paleti / ayar çekmecesini kapat |
+
 ## Kurulum
 
 ```bash

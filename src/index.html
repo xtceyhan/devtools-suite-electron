@@ -1,44 +1,35 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
 <title>Dev Tools Suite</title>
 <link rel="stylesheet" href="assets/fonts/fonts.css">
 <link rel="stylesheet" href="assets/icons/tabler-icons.min.css">
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="styles.css">
+<script>/* tema: ilk boyamadan önce uygula (yanıp sönmeyi önler) */
+(function(){var p;try{p=localStorage.getItem('dts-theme')}catch(e){}p=p||'system';var t=p==='system'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):p;document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body>
 
 <!-- TITLEBAR -->
 <div class="titlebar">
-  <div class="tl-logo">
-    <div class="tl-icon"><i class="ti ti-code"></i></div>
-    <b>Dev</b>&nbsp;Tools Suite
+  <div class="tl-logo" aria-label="Dev Tools Suite">
+    <svg class="tl-mark" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.75" y="4.75" width="7.5" height="14.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><rect x="12.5" y="3.9" width="9" height="16.2" rx="1.5" fill="#d4ff3a"/><path d="M15.2 8.6 18.6 12l-3.4 3.4" fill="none" stroke="#141412" stroke-width="2" stroke-linecap="square"/></svg>
+    <span class="tl-wm"><b>devtools</b><span>/suite</span></span>
   </div>
 
-  <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="fmt">
-      <i class="ti ti-braces"></i>Formatter
-    </button>
-    <button class="nav-tab" data-tab="gen">
-      <i class="ti ti-transform"></i>XSL Generator
-    </button>
-    <button class="nav-tab" data-tab="req">
-      <i class="ti ti-file-arrow-right"></i>XSL → Request
-    </button>
-    <button class="nav-tab" data-tab="mip">
-      <i class="ti ti-package"></i>MIP Paketi
-    </button>
-    <button class="nav-tab" data-tab="diff">
-      <i class="ti ti-arrows-diff"></i>Diff
-    </button>
-  </div>
+  <button class="search-trigger" id="paletteOpen" title="Komut paleti (Ctrl K)">
+    <i class="ti ti-search"></i><span>Araç ara veya komut çalıştır…</span><kbd class="kbd">Ctrl K</kbd>
+  </button>
 
-  <div class="tl-space"></div>
   <div class="tl-btns">
-    <button class="tbb" id="bMin"><i class="ti ti-minus"></i></button>
-    <button class="tbb" id="bMax"><i class="ti ti-square"></i></button>
-    <button class="tbb cl" id="bClose"><i class="ti ti-x"></i></button>
+    <button class="tbb" id="bSide" title="Kenar çubuğu (Ctrl B)" aria-label="Kenar çubuğunu daralt"><i class="ti ti-layout-sidebar"></i></button>
+    <button class="tbb" id="bTheme" title="Tema (Ctrl Shift L)" aria-label="Temayı değiştir"><i class="ti ti-moon"></i></button>
+    <span class="tl-sep"></span>
+    <button class="tbb" id="bMin" aria-label="Küçült"><i class="ti ti-minus"></i></button>
+    <button class="tbb" id="bMax" aria-label="Büyüt"><i class="ti ti-square"></i></button>
+    <button class="tbb cl" id="bClose" aria-label="Kapat"><i class="ti ti-x"></i></button>
   </div>
 </div>
 
@@ -52,10 +43,27 @@
   <button class="ub-close" id="ubClose"><i class="ti ti-x"></i></button>
 </div>
 
+<div class="shell" id="shell">
+<nav class="side" aria-label="Araçlar">
+  <div class="side-head"><span class="label">Veri &amp; Format</span></div>
+  <button class="nav-tab active" data-tab="fmt" data-key="1"><span class="glyph">{}</span><span class="nt-name">Formatter</span><kbd class="kbd">Ctrl 1</kbd></button>
+  <button class="nav-tab" data-tab="diff" data-key="2"><span class="glyph">±</span><span class="nt-name">Diff</span><kbd class="kbd">Ctrl 2</kbd></button>
+  <div class="side-head"><span class="label">SAP &amp; Entegrasyon</span></div>
+  <button class="nav-tab" data-tab="gen" data-key="3"><span class="glyph">xsl</span><span class="nt-name">XSL Generator</span><kbd class="kbd">Ctrl 3</kbd></button>
+  <button class="nav-tab" data-tab="req" data-key="4"><span class="glyph">req</span><span class="nt-name">XSL → Request</span><kbd class="kbd">Ctrl 4</kbd></button>
+  <button class="nav-tab" data-tab="mip" data-key="5"><span class="glyph">zip</span><span class="nt-name">MIP Paketi</span><kbd class="kbd">Ctrl 5</kbd></button>
+  <div class="side-fill"></div>
+  <div class="side-foot">
+    <span class="led"></span><span class="label">Çevrimdışı · yerel</span>
+  </div>
+</nav>
+<main class="workspace">
+
 <!-- ═══════════════════════════════════════════════════
      TAB 1 — FORMATTER
 ═══════════════════════════════════════════════════ -->
 <div class="tab-panel active" id="tab-fmt">
+  <div class="toolhead"><div class="crumbs"><span class="label">Veri &amp; Format</span><span class="label">/</span><span class="badge">{}</span></div><h1>XML / JSON Formatter</h1><p>Biçimlendir, küçült, doğrula — satır ve sütunla hata.</p></div>
   <div class="toolbar">
     <div class="mode-tabs">
       <button class="mode-tab active" data-mode="auto">AUTO</button>
@@ -63,7 +71,7 @@
       <button class="mode-tab" data-mode="json">JSON</button>
     </div>
     <div class="sep"></div>
-    <button class="btn prim" id="f-format"><i class="ti ti-wand"></i>Format</button>
+    <button class="btn prim" id="f-format"><i class="ti ti-wand"></i>Format<kbd class="kbd">Ctrl ↵</kbd></button>
     <button class="btn" id="f-minify"><i class="ti ti-arrows-minimize"></i>Minify</button>
     <button class="btn" id="f-validate"><i class="ti ti-shield-check"></i>Validate</button>
     <div class="sep"></div>
@@ -82,7 +90,7 @@
   <div class="main-area" id="f-mainArea">
     <div class="panel" id="f-left">
       <div class="ph">
-        <div class="ph-accent" id="f-inDot" style="background:var(--accent);color:var(--accent)"></div>
+        <div class="ph-accent" id="f-inDot" style="background:var(--accent-ink);color:var(--accent-ink)"></div>
         <span id="f-inLabel">INPUT — AUTO</span>
         <div class="ph-right"><span id="f-inStats" style="font-size:10.5px;color:var(--t3)"></span></div>
       </div>
@@ -118,6 +126,7 @@
      TAB 2 — XSL GENERATOR
 ═══════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-gen">
+  <div class="toolhead"><div class="crumbs"><span class="label">SAP &amp; Entegrasyon</span><span class="label">/</span><span class="badge">xsl</span></div><h1>WSDL → XSL Generator</h1><p>WSDL’den operasyonları ayrıştır, XSLT mapping üret.</p></div>
   <div class="toolbar">
     <button class="btn prim" id="g-load"><i class="ti ti-file-upload"></i>WSDL Yükle</button>
     <button class="btn" id="g-parse"><i class="ti ti-search"></i>Ayrıştır</button>
@@ -129,6 +138,7 @@
       <button class="btn" id="g-settings"><i class="ti ti-settings"></i>Ayarlar</button>
       <button class="btn" id="g-copyXsl" disabled><i class="ti ti-copy"></i>XSL Kopyala</button>
       <button class="btn success" id="g-saveXsl" disabled><i class="ti ti-device-floppy"></i>XSL Kaydet</button>
+      <button class="btn danger" id="g-clear"><i class="ti ti-trash"></i>Temizle</button>
     </div>
   </div>
   <div class="main-area" id="g-mainArea">
@@ -176,7 +186,7 @@
     <div class="divider" id="g-div1"></div>
     <div class="panel" id="g-mid" style="flex:0 0 280px">
       <div class="ph">
-        <div class="ph-accent" style="background:var(--accent);color:var(--accent)"></div>
+        <div class="ph-accent" style="background:var(--accent-ink);color:var(--accent-ink)"></div>
         <span id="g-midTitle">PARAMETRELER</span>
         <div class="ph-right">
           <button class="ph-btn" id="g-selAll">Tümü</button>
@@ -211,9 +221,10 @@
      TAB 3 — XSL → REQUEST
 ═══════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-req">
+  <div class="toolhead"><div class="crumbs"><span class="label">SAP &amp; Entegrasyon</span><span class="label">/</span><span class="badge">req</span></div><h1>XSL → Request</h1><p>XSLT’den örnek JSON veya SOAP isteği üret.</p></div>
   <div class="toolbar">
     <button class="btn prim" id="r-loadXsl"><i class="ti ti-file-upload"></i>XSL Yükle</button>
-    <button class="btn" id="r-parse"><i class="ti ti-wand"></i>Dönüştür</button>
+    <button class="btn" id="r-parse"><i class="ti ti-wand"></i>Dönüştür<kbd class="kbd">Ctrl ↵</kbd></button>
     <div class="sep"></div>
     <div class="mode-tabs">
       <button class="mode-tab active" data-rmode="json">JSON</button>
@@ -221,7 +232,7 @@
     </div>
     <div class="sep"></div>
     <span class="fmt-label">SOAP Prefix</span>
-    <input id="r-soapPfx" value="soapenv" style="width:90px;background:var(--glass);border:0.5px solid var(--glass-border);color:var(--t1);border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;font-family:inherit;outline:none;">
+    <input id="r-soapPfx" class="tb-input" value="soapenv" spellcheck="false">
     <div class="btn-right">
       <button class="btn" id="r-copy" disabled><i class="ti ti-copy"></i>Kopyala</button>
       <button class="btn success" id="r-save" disabled><i class="ti ti-device-floppy"></i>Kaydet</button>
@@ -268,15 +279,16 @@
      TAB 4 — MIP PAKETİ OLUŞTUR
 ═══════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-mip">
-  <div class="main-area" id="mip-mainArea" style="align-items:flex-start;overflow-y:auto;padding:16px;gap:16px;flex-wrap:wrap">
+  <div class="toolhead"><div class="crumbs"><span class="label">SAP &amp; Entegrasyon</span><span class="label">/</span><span class="badge">zip</span></div><h1>MIP Paketi</h1><p>Paket bilgileri + XSL → içe aktarılabilir ZIP.</p></div>
+  <div class="main-area" id="mip-mainArea" style="align-items:stretch;overflow:hidden;flex-wrap:nowrap">
 
     <!-- SOL KOLON: Girdi Alanları -->
-    <div class="panel" style="flex:0 0 380px;min-width:320px">
+    <div class="panel" id="mip-left" style="flex:0 0 380px;min-width:320px">
       <div class="ph">
-        <div class="ph-accent" style="background:var(--accent);color:var(--accent)"></div>
+        <div class="ph-accent" style="background:var(--accent-ink);color:var(--accent-ink)"></div>
         <span>PAKET BİLGİLERİ</span>
       </div>
-      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto">
 
         <div class="mip-field">
           <label>Package ID <span class="mip-req">*</span></label>
@@ -355,7 +367,7 @@
             <i class="ti ti-package-export"></i>ZIP Oluştur &amp; İndir
           </button>
           <button class="btn danger" id="mip-clear">
-            <i class="ti ti-trash"></i>
+            <i class="ti ti-trash"></i>Temizle
           </button>
         </div>
 
@@ -363,7 +375,7 @@
     </div>
 
     <!-- SAĞ KOLON: XSL İçeriği -->
-    <div class="panel" style="flex:1;min-width:320px;min-height:500px">
+    <div class="panel" id="mip-right" style="flex:1;min-width:320px;min-height:0">
       <div class="ph">
         <div class="ph-accent" style="background:var(--amber);color:var(--amber)"></div>
         <span>XSL İÇERİĞİ</span>
@@ -388,8 +400,9 @@
      TAB 5 — DIFF (XML / JSON KARŞILAŞTIRMA)
 ═══════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-diff">
+  <div class="toolhead"><div class="crumbs"><span class="label">Veri &amp; Format</span><span class="label">/</span><span class="badge">±</span></div><h1>Diff</h1><p>İki XML/JSON gövdesini biçimlendirip yan yana karşılaştır.</p></div>
   <div class="toolbar">
-    <button class="btn prim" id="d-compare"><i class="ti ti-git-compare"></i>Karşılaştır</button>
+    <button class="btn prim" id="d-compare"><i class="ti ti-git-compare"></i>Karşılaştır<kbd class="kbd">Ctrl ↵</kbd></button>
     <button class="btn" id="d-wsToggle"><i class="ti ti-eraser"></i>Boşlukları Yoksay</button>
     <div class="sep"></div>
     <span class="fmt-label">Indent</span>
@@ -450,6 +463,9 @@
     <div class="st" id="d-stStatus"><div class="st-dot"></div><span>Hazır</span></div>
     <div class="st st-right" id="d-stCounts"></div>
   </div>
+</div>
+
+</main>
 </div>
 
 <!-- SETTINGS DRAWER -->
@@ -527,7 +543,7 @@
 
 <!-- Type Popup -->
 <div id="typePopup">
-  <div class="tp-item" data-type="SIMPLE" style="color:var(--accent)">SIMPLE — xsl:value-of</div>
+  <div class="tp-item" data-type="SIMPLE" style="color:var(--accent-ink)">SIMPLE — xsl:value-of</div>
   <div class="tp-item" data-type="RANGE"  style="color:var(--coral)">RANGE — SIGN/OPTION/LOW/HIGH</div>
   <div class="tp-item" data-type="TABLE"  style="color:var(--pink)">TABLE — xsl:for-each item</div>
   <div class="tp-item" data-type="STRUCT" style="color:var(--teal)">STRUCT — alt alan yapısı</div>
@@ -536,6 +552,15 @@
 <!-- Toast -->
 <div id="toast"></div>
 
+<!-- Komut paleti -->
+<div class="pal-scrim" id="palScrim" hidden></div>
+<div class="pal" id="pal" role="dialog" aria-modal="true" aria-label="Komut paleti" hidden>
+  <div class="pal-search"><span class="pal-prompt">›</span><input id="palInput" placeholder="Araç veya komut yaz…" autocomplete="off" spellcheck="false" aria-controls="palList"><kbd class="kbd">Esc</kbd></div>
+  <div class="pal-list" id="palList" role="listbox"></div>
+  <div class="pal-foot"><span><kbd class="kbd">↑ ↓</kbd> gez</span><span><kbd class="kbd">↵</kbd> aç</span><span><kbd class="kbd">Ctrl 1–5</kbd> doğrudan araç</span></div>
+</div>
+
 <script src="app.js"></script>
+<script src="shell.js"></script>
 </body>
 </html>

@@ -1,0 +1,136 @@
+/* Dev Tools Suite — Signal Bench · tasarım token'ları (kaynak: Design System tokens.json) */
+:root, [data-theme="dark"] {
+  --bg-000: #0d0d0b;
+  --bg-100: #141412;
+  --bg-200: #1b1b18;
+  --bg-300: #24241f;
+  --bg-400: #2e2e28;
+  --line-100: #262622;
+  --line-200: #34342e;
+  --line-300: #74716a;
+  --ink-100: #f2efe6;
+  --ink-200: #bdb9ab;
+  --ink-300: #949083;
+  --ink-disabled: #5c5a52;
+  --volt: #d4ff3a;
+  --accent: #d4ff3a;
+  --accent-hover: #e3ff73;
+  --accent-press: #bfe61f;
+  --on-accent: #151a05;
+  --accent-ink: #d4ff3a;
+  --accent-wash: rgba(212, 255, 58, 0.14);
+  --focus: #d4ff3a;
+  --success: #3fd9b4;
+  --success-wash: rgba(63, 217, 180, 0.13);
+  --warning: #ffb547;
+  --warning-wash: rgba(255, 181, 71, 0.13);
+  --danger: #ff6f61;
+  --danger-wash: rgba(255, 111, 97, 0.13);
+  --syn-key: #9ed6ff;
+  --syn-string: #c9ec7c;
+  --syn-number: #ffab70;
+  --syn-keyword: #ff9fb4;
+  --syn-punct: #8f8b7e;
+  --syn-comment: #77746a;
+  --shadow-pop: 0 8px 24px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px #34342e;
+  --shadow-modal: 0 24px 64px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px #34342e;
+  --shadow-key: inset 0 -1px 0 #46463f;
+}
+[data-theme="light"] {
+  --bg-000: #e9e6dc;
+  --bg-100: #f3f1ea;
+  --bg-200: #fbfaf6;
+  --bg-300: #ffffff;
+  --bg-400: #e2dfd3;
+  --line-100: #e1ded3;
+  --line-200: #d2cec1;
+  --line-300: #7d7a6f;
+  --ink-100: #1a1915;
+  --ink-200: #4a473e;
+  --ink-300: #5f5c53;
+  --ink-disabled: #a3a095;
+  --volt: #d4ff3a;
+  --accent: #1a1915;
+  --accent-hover: #2e2d27;
+  --accent-press: #000000;
+  --on-accent: #d4ff3a;
+  --accent-ink: #4c6b00;
+  --accent-wash: rgba(124, 170, 0, 0.18);
+  --focus: #4c6b00;
+  --success: #076b57;
+  --success-wash: rgba(7, 107, 87, 0.10);
+  --warning: #8f5600;
+  --warning-wash: rgba(143, 86, 0, 0.10);
+  --danger: #b52a1a;
+  --danger-wash: rgba(181, 42, 26, 0.09);
+  --syn-key: #0b5b9e;
+  --syn-string: #476600;
+  --syn-number: #9a420a;
+  --syn-keyword: #b0254f;
+  --syn-punct: #5f5c53;
+  --syn-comment: #7a776c;
+  --shadow-pop: 0 8px 24px -8px rgba(40, 36, 20, 0.22), 0 0 0 1px #d2cec1;
+  --shadow-modal: 0 24px 64px -16px rgba(40, 36, 20, 0.3), 0 0 0 1px #d2cec1;
+  --shadow-key: inset 0 -1px 0 #c3bfb1;
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-1: 3px;
+  --radius-2: 5px;
+  --radius-3: 8px;
+  --radius-4: 12px;
+  --radius-pill: 999px;
+  --z-sticky: 10;
+  --z-drawer: 40;
+  --z-pop: 60;
+  --z-modal: 80;
+  --z-toast: 90;
+  --font-display: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
+  --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, Consolas, monospace;
+}
+.display { font-family: var(--font-display); font-size: 40px; line-height: 42px; font-weight: 700; letter-spacing: -0.02em; }
+.title-1 { font-family: var(--font-display); font-size: 24px; line-height: 30px; font-weight: 650; letter-spacing: -0.015em; }
+.title-2 { font-family: var(--font-display); font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.body { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
+.body-strong { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 550; }
+.small { font-family: var(--font-sans); font-size: 12.5px; line-height: 16px; font-weight: 400; }
+.label { font-family: var(--font-mono); font-size: 11px; line-height: 14px; font-weight: 500; letter-spacing: 0.08em; }
+.kbd { font-family: var(--font-mono); font-size: 11px; line-height: 16px; font-weight: 500; }
+.code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; }
+.code-lg { font-family: var(--font-mono); font-size: 15px; line-height: 24px; font-weight: 400; }
+
+/* Eski değişken adları → Signal Bench (app.js içindeki satır içi stiller bunları kullanır) */
+:root, [data-theme] {
+  --t1: var(--ink-100);
+  --t2: var(--ink-200);
+  --t3: var(--ink-300);
+  --t4: var(--ink-disabled);
+  --teal: var(--success);
+  --red: var(--danger);
+  --amber: var(--warning);
+  --coral: var(--syn-number);
+  --pink: var(--syn-keyword);
+  --glass: var(--bg-200);
+  --glass-strong: var(--bg-300);
+  --glass-border: var(--line-200);
+  --glass-border-strong: var(--line-300);
+  --radius-sm: var(--radius-2);
+  --radius-md: var(--radius-3);
+  --radius-lg: var(--radius-3);
+
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+  --dur-slow: 200ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root, [data-theme] { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+}

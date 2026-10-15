@@ -8,7 +8,7 @@ let mainWindow = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280, height: 800, minWidth: 900, minHeight: 600,
-    frame: false, transparent: true, backgroundColor: '#00000000',
+    frame: false, backgroundColor: '#141412',
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
