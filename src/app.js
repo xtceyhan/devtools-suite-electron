@@ -1129,6 +1129,8 @@ const GEN = (() => {
     doParse,
     getXslText:  () => $('g-xslOut').value,
     getFuncName: () => currentOp,
+    getOperations: () => (parsedWSDL ? parsedWSDL.operations.map(o => o.name) : []),
+    selectOperation: (name) => { const sel = $('g-opSel'); sel.value = name; sel.dispatchEvent(new Event('change')); },
     setSoapVersion: (v) => {
       soapVersion = (v==='SOAP 1.2') ? 'SOAP 1.2' : 'SOAP 1.1';
       if (currentOp) doGenerate();
@@ -1937,6 +1939,50 @@ const WSDL_HELPER = (() => {
     });
   }
 
+  // Operasyon seçici popup — seçilen operasyon adını döndürür, iptalde null
+  function pickOperation(ops) {
+    return new Promise(resolve => {
+      const scrim = $('opScrim'), box = $('opPicker'), input = $('opPickInput'), list = $('opPickList');
+      let shown = ops.slice(), idx = 0;
+      const onInput = () => { idx = 0; render(); };
+      const close = (val) => {
+        scrim.hidden = true; box.hidden = true;
+        input.removeEventListener('input', onInput); input.removeEventListener('keydown', onKey);
+        scrim.onclick = null; resolve(val);
+      };
+      function render() {
+        const q = input.value.trim().toLowerCase();
+        shown = ops.filter(o => o.toLowerCase().includes(q));
+        if (idx >= shown.length) idx = Math.max(0, shown.length - 1);
+        list.innerHTML = '';
+        shown.forEach((name, i) => {
+          const b = document.createElement('button');
+          b.className = 'pal-item'; b.setAttribute('role', 'option');
+          if (i === idx) { b.setAttribute('aria-selected', 'true'); b.style.background = 'var(--accent-wash)'; }
+          const ic = document.createElement('i'); ic.className = 'ti ti-package';
+          const tx = document.createElement('span'); tx.textContent = name;
+          b.append(ic, tx);
+          b.onclick = () => close(name);
+          list.appendChild(b);
+        });
+        if (!shown.length) list.innerHTML = '<div style="padding:12px;color:var(--ink-300);font-size:13px">Eşleşen servis yok</div>';
+        $('opPickCount').textContent = shown.length + ' / ' + ops.length + ' servis';
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(null); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx + 1, shown.length - 1); render(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx - 1, 0); render(); }
+        else if (e.key === 'Enter') { e.preventDefault(); if (shown[idx]) close(shown[idx]); }
+      }
+      input.value = ''; idx = 0; render();
+      scrim.hidden = false; box.hidden = false;
+      scrim.onclick = () => close(null);
+      input.addEventListener('input', onInput);
+      input.addEventListener('keydown', onKey);
+      input.focus();
+    });
+  }
+
   // Fetch butonu
   $('wsdl-fetch').onclick = async () => {
     const url  = $('wsdl-url').value.trim();
@@ -1971,10 +2017,20 @@ const WSDL_HELPER = (() => {
       // (tek operasyon varsa doGenerate() otomatik tetiklenir ve mip-xsl'i de doldurur)
       $('g-wsdl').value = formatXML(r.xml, '  ');
       window.GEN?.doParse();
-      if (window.GEN?.getXslText()) {
+      const ops = window.GEN?.getOperations() || [];
+      if (ops.length > 1) {
+        // Birden fazla servis (RFC) var — hangisinin paketleneceğini popup ile sor
+        const picked = await pickOperation(ops);
+        if (picked) {
+          window.GEN.selectOperation(picked);
+          toast('✓ ' + picked + ' için XSL oluşturuldu');
+        } else {
+          toast('⚠ Servis seçilmedi — XSL Generator sekmesinden seçebilirsiniz', 'var(--amber)');
+        }
+      } else if (window.GEN?.getXslText()) {
         toast('✓ XSL otomatik oluşturuldu ve dolduruldu');
       } else {
-        toast('⚠ WSDL\'de birden fazla operasyon var — XSL Generator sekmesinden operasyonu seçin', 'var(--amber)');
+        toast('⚠ Operasyon bulunamadı — XSL Generator sekmesini kontrol edin', 'var(--amber)');
       }
     } finally {
       btn.disabled = false;

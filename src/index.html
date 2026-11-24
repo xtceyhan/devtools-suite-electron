@@ -560,6 +560,14 @@
   <div class="pal-foot"><span><kbd class="kbd">↑ ↓</kbd> gez</span><span><kbd class="kbd">↵</kbd> aç</span><span><kbd class="kbd">Ctrl 1–5</kbd> doğrudan araç</span></div>
 </div>
 
+<!-- Operasyon seçici (WSDL'de birden fazla servis varsa) -->
+<div class="pal-scrim" id="opScrim" hidden style="z-index:89"></div>
+<div class="pal" id="opPicker" role="dialog" aria-modal="true" aria-label="Operasyon seç" hidden style="z-index:90">
+  <div class="pal-search"><span class="pal-prompt">›</span><input id="opPickInput" placeholder="Hangi servisi paketlemek istiyorsunuz?" autocomplete="off" spellcheck="false"><kbd class="kbd">Esc</kbd></div>
+  <div class="pal-list" id="opPickList" role="listbox"></div>
+  <div class="pal-foot"><span id="opPickCount"></span><span><kbd class="kbd">↑ ↓</kbd> gez</span><span><kbd class="kbd">↵</kbd> seç</span></div>
+</div>
+
 <script src="app.js"></script>
 <script src="shell.js"></script>
 </body>
